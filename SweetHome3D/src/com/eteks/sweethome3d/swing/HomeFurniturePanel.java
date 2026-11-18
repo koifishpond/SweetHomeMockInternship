@@ -194,11 +194,9 @@ public class HomeFurniturePanel extends JPanel implements DialogView {
           public void changedUpdate(DocumentEvent ev) {
             controller.removePropertyChangeListener(HomeFurnitureController.Property.DESCRIPTION, descriptionChangeListener);
             String description = descriptionTextField.getText(); 
-            if (description == null || description.trim().length() == 0) {
-              controller.setDescription(null);
-            } else {
-              controller.setDescription(description);
-            }
+            // An empty edit clears the description. A null controller value can
+            // represent different descriptions in a multiple selection.
+            controller.setDescription(description.trim().length() == 0 ? "" : description);
             controller.addPropertyChangeListener(HomeFurnitureController.Property.DESCRIPTION, descriptionChangeListener);
           }
     

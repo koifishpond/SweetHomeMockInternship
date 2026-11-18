@@ -591,11 +591,11 @@ public class HomeFurnitureController implements Controller {
    * Returns <code>true</code> if the given <code>property</code> is editable.
    * Depending on whether a property is editable or not, the view associated to this controller
    * may render it differently.
-   * The implementation of this method always returns <code>true</code> except for <code>DESCRIPTION</code> and <code>PRICE</code> properties. 
+   * The <code>PRICE</code> property is read-only. Editability of <code>LIGHT_POWER</code>
+   * and <code>VISIBLE</code> depends on the current furniture selection.
    */
   public boolean isPropertyEditable(Property property) {
     switch (property) {
-      case DESCRIPTION :
       case PRICE :
         return false;
       case LIGHT_POWER :
@@ -1217,7 +1217,7 @@ public class HomeFurnitureController implements Controller {
       if (name != null) {
         this.preferences.addAutoCompletionString("HomePieceOfFurnitureName", name);
       }
-      if (description != null) {
+      if (description != null && description.length() > 0) {
         this.preferences.addAutoCompletionString("HomePieceOfFurnitureDescription", description);
       }
     }
@@ -1344,7 +1344,7 @@ public class HomeFurnitureController implements Controller {
         piece.setNameVisible(nameVisible);
       }
       if (description != null) {
-        piece.setDescription(description);
+        piece.setDescription(description.length() == 0 ? null : description);
       }
       if (price != null
           &&!(piece instanceof HomeFurnitureGroup)) {
