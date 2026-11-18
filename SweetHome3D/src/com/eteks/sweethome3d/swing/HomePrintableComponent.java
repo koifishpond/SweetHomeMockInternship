@@ -47,7 +47,6 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 
 import com.eteks.sweethome3d.model.Home;
-import com.eteks.sweethome3d.model.HomePieceOfFurniture;
 import com.eteks.sweethome3d.model.HomePrint;
 import com.eteks.sweethome3d.model.LengthUnit;
 import com.eteks.sweethome3d.model.Level;
@@ -256,21 +255,30 @@ public class HomePrintableComponent extends JComponent implements Printable {
         // Retrieve variable values
         int pageNumber = page + 1; 
         int pageCount = getPageCount(); 
+        Level planLevel = homePrint.isPlanPrinted()
+            ? PlanComponent.getPrintLevel(this.home, page - this.furniturePageCount)
+            : null;
+        Level pageLevel = page < this.furniturePageCount && !this.home.getLevels().isEmpty()
+            ? null
+            : planLevel != null ? planLevel : this.home.getSelectedLevel();
         String planScale = "?";
-        if (homePrint.getPlanScale() != null) {
-          planScale = "1/" + Math.round(1 / homePrint.getPlanScale());
-        } else {
+        Float requestedScale = homePrint.getPlanScale();
+        if (requestedScale == null || planLevel != null) {
           Float preferredScale = null;
+          Level scaleLevel = planLevel != null ? planLevel : this.home.getSelectedLevel();
           // Should create an interface to test if the component has a preferred scale
           if (planView instanceof PlanComponent) {
-            preferredScale = ((PlanComponent)planView).getPrintPreferredScale(g, pageFormat);
+            preferredScale = ((PlanComponent)planView).getPrintPreferredScale(g, pageFormat, scaleLevel);
           } else if (planView instanceof MultipleLevelsPlanPanel) {
-            preferredScale = ((MultipleLevelsPlanPanel)planView).getPrintPreferredScale(g, pageFormat);
-          }     
-          if (preferredScale != null) {
-            planScale = "1/" + Math.round(1 / preferredScale);
+            preferredScale = ((MultipleLevelsPlanPanel)planView).getPrintPreferredScale(g, pageFormat, scaleLevel);
           }
-        }          
+          if (preferredScale != null && preferredScale > 0) {
+            requestedScale = requestedScale == null ? preferredScale : Math.min(requestedScale, preferredScale);
+          }
+        }
+        if (requestedScale != null) {
+          planScale = "1/" + Math.round(1 / requestedScale);
+        }
         if (page == 0) {
           this.printDate = new Date();
         }
@@ -278,10 +286,7 @@ public class HomePrintableComponent extends JComponent implements Printable {
         if (homeName == null) {
           homeName = "";
         }
-        String levelName = "";
-        if (this.home.getSelectedLevel() != null) {
-          levelName = this.home.getSelectedLevel().getName();
-        }
+        String levelName = pageLevel == null ? "" : pageLevel.getName();
         String homePresentationName = this.controller.getContentManager().getPresentationName(
              homeName, ContentManager.ContentType.SWEET_HOME_3D);
         Object [] variableValues = new Object [] {
@@ -345,32 +350,7 @@ public class HomePrintableComponent extends JComponent implements Printable {
     View furnitureView = this.controller.getFurnitureController().getView();
     if (furnitureView != null 
         && (homePrint == null || homePrint.isFurniturePrinted())) {
-      FurnitureTable furnitureTable = null;
-      final FurnitureTable.FurnitureFilter furnitureFilter;
-      if (furnitureView instanceof FurnitureTable
-          && (homePrint == null
-              || homePrint.isPlanPrinted()
-              || homePrint.isView3DPrinted())) {
-        final Level selectedLevel = home.getSelectedLevel();
-        furnitureTable = (FurnitureTable)furnitureView;
-        furnitureFilter = furnitureTable.getFurnitureFilter();
-        furnitureTable.setFurnitureFilter(new FurnitureTable.FurnitureFilter() {
-            public boolean include(Home home, HomePieceOfFurniture piece) {
-              // Print only furniture at selected level when the plan or the 3D view is printed
-              return (furnitureFilter == null || furnitureFilter.include(home, piece))
-                  && piece.isAtLevel(selectedLevel)
-                  && (piece.getLevel() == null || piece.getLevel().isViewable());
-            }
-          });
-      } else {
-        furnitureFilter = null;
-      }
-      // Try to print next furniture view page      
       pageExists = ((Printable)furnitureView).print(g2D, pageFormat, page);
-      if (furnitureTable != null) {
-        // Restore previous filter
-        ((FurnitureTable)furnitureView).setFurnitureFilter(furnitureFilter);
-      }
       if (pageExists == PAGE_EXISTS
           && !this.printablePages.contains(page)) {
         this.printablePages.add(page);
